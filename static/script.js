@@ -117,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function renderGrid() {
         // Clear existing
-        gridHeader.innerHTML = '<th class="date-col">Date</th>';
+        gridHeader.innerHTML = '<th class="habit-col">Habits</th>';
         gridBody.innerHTML = '';
         
         if(habits.length === 0) {
@@ -125,52 +125,133 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        // Render Headers (Habits)
-        habits.forEach(habit => {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        const daysInMonth = getDaysInMonth(year, month);
+        const monthStr = String(month + 1).padStart(2, '0');
+        const todayStr = getTodayString();
+        
+        // Render Headers (Days)
+        for(let day = 1; day <= daysInMonth; day++) {
+            const dayStr = String(day).padStart(2, '0');
+            const dateStr = `${year}-${monthStr}-${dayStr}`;
+            const dateObj = new Date(year, month, day);
+            const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'narrow' });
+            
             const th = document.createElement('th');
-            th.innerHTML = `
+            th.className = 'day-col';
+            if(dateStr === todayStr) {
+                th.style.backgroundColor = 'rgba(0, 210, 255, 0.15)';
+                th.style.color = 'var(--accent-secondary)';
+            }
+            th.innerHTML = `<div>${dayStr}</div><div style="font-size: 0.7rem; font-weight: normal; margin-top: 2px;">${dayName}</div>`;
+            gridHeader.appendChild(th);
+        }
+        
+        let draggedRow = null;
+
+        // Render Rows (Habits)
+        habits.forEach((habit, index) => {
+            const tr = document.createElement('tr');
+            tr.className = 'habit-row';
+            tr.setAttribute('draggable', 'true');
+            tr.dataset.index = index;
+            tr.dataset.id = habit.id;
+            
+            // Drag Events
+            tr.addEventListener('dragstart', (e) => {
+                draggedRow = tr;
+                setTimeout(() => tr.classList.add('dragging'), 0);
+            });
+            tr.addEventListener('dragend', () => {
+                tr.classList.remove('dragging');
+                draggedRow = null;
+                document.querySelectorAll('.habit-row').forEach(row => row.classList.remove('drag-over'));
+            });
+            tr.addEventListener('dragover', (e) => {
+                e.preventDefault(); // Necessary to allow dropping
+            });
+            tr.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+                if(tr !== draggedRow) tr.classList.add('drag-over');
+            });
+            tr.addEventListener('dragleave', () => {
+                tr.classList.remove('drag-over');
+            });
+            tr.addEventListener('drop', (e) => {
+                e.preventDefault();
+                tr.classList.remove('drag-over');
+                if(tr !== draggedRow) {
+                    reorderHabits(draggedRow.dataset.index, tr.dataset.index);
+                }
+            });
+            
+            // Habit Column (Sticky Left)
+            const tdHabit = document.createElement('td');
+            tdHabit.className = 'habit-col';
+            tdHabit.innerHTML = `
                 <div class="habit-header-content">
-                    <span class="habit-name">${escapeHTML(habit.name)}</span>
+                    <i class="ph ph-dots-six-vertical drag-handle" title="Drag to reorder"></i>
+                    <span class="habit-name" title="Double click to edit">${escapeHTML(habit.name)}</span>
                     <button class="btn-delete" data-id="${habit.id}" title="Delete Habit">
                         <i class="ph ph-trash"></i>
                     </button>
                 </div>
             `;
-            gridHeader.appendChild(th);
-        });
-        
-        // Render Rows (Days)
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
-        const daysInMonth = getDaysInMonth(year, month);
-        const monthStr = String(month + 1).padStart(2, '0');
-        
-        const todayStr = getTodayString();
-        
-        for(let day = 1; day <= daysInMonth; day++) {
-            const dayStr = String(day).padStart(2, '0');
-            const dateStr = `${year}-${monthStr}-${dayStr}`;
+            tr.appendChild(tdHabit);
             
-            const tr = document.createElement('tr');
+            // Edit Name on Double Click
+            const nameSpan = tdHabit.querySelector('.habit-name');
+            nameSpan.addEventListener('dblclick', () => {
+                if(nameSpan.querySelector('input')) return;
+                
+                const currentName = habit.name;
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = currentName;
+                input.className = 'edit-habit-input';
+                
+                nameSpan.innerHTML = '';
+                nameSpan.appendChild(input);
+                input.focus();
+                
+                const saveName = async () => {
+                    const newName = input.value.trim();
+                    if(newName && newName !== currentName) {
+                        try {
+                            const res = await fetch(`/api/habits/${habit.id}`, {
+                                method: 'PUT',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({name: newName})
+                            });
+                            if(res.ok) {
+                                habit.name = newName;
+                            }
+                        } catch(e) { console.error("Error updating name", e); }
+                    }
+                    nameSpan.innerHTML = escapeHTML(habit.name);
+                };
+                
+                input.addEventListener('blur', saveName);
+                input.addEventListener('keydown', (e) => {
+                    if(e.key === 'Enter') input.blur();
+                    if(e.key === 'Escape') {
+                        input.value = currentName;
+                        input.blur();
+                    }
+                });
+            });
             
-            // Highlight today
-            if(dateStr === todayStr) {
-                tr.style.backgroundColor = 'rgba(0, 210, 255, 0.05)';
-            }
-            
-            // Date Column
-            const dateObj = new Date(year, month, day);
-            const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
-            
-            const tdDate = document.createElement('td');
-            tdDate.className = 'date-col';
-            tdDate.innerHTML = `<div><strong>${dayStr}</strong> <span style="font-size: 0.8rem; color: var(--text-muted)">${dayName}</span></div>`;
-            tr.appendChild(tdDate);
-            
-            // Habit Checkboxes
-            habits.forEach(habit => {
+            // Days Columns (Checkboxes)
+            for(let day = 1; day <= daysInMonth; day++) {
+                const dayStr = String(day).padStart(2, '0');
+                const dateStr = `${year}-${monthStr}-${dayStr}`;
+                
                 const td = document.createElement('td');
                 td.className = 'checkbox-cell';
+                if(dateStr === todayStr) {
+                    td.style.backgroundColor = 'rgba(0, 210, 255, 0.05)';
+                }
                 
                 // Find log
                 const log = logs.find(l => l.habit_id === habit.id && l.date === dateStr);
@@ -183,13 +264,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 td.appendChild(checkDiv);
                 
                 // Toggle log
-                td.addEventListener('click', () => toggleLog(habit.id, dateStr, !isCompleted, checkDiv));
+                td.addEventListener('click', () => {
+                    const currentlyCompleted = checkDiv.classList.contains('checked');
+                    toggleLog(habit.id, dateStr, !currentlyCompleted, checkDiv);
+                });
                 
                 tr.appendChild(td);
-            });
+            }
             
             gridBody.appendChild(tr);
-        }
+        });
         
         // Bind Delete Buttons
         document.querySelectorAll('.btn-delete').forEach(btn => {
@@ -204,6 +288,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch(e) { console.error(e); }
             });
         });
+    }
+    
+    async function reorderHabits(fromIndex, toIndex) {
+        fromIndex = parseInt(fromIndex);
+        toIndex = parseInt(toIndex);
+        
+        // Update local array
+        const [movedItem] = habits.splice(fromIndex, 1);
+        habits.splice(toIndex, 0, movedItem);
+        
+        // Update positions
+        habits.forEach((h, i) => h.position = i);
+        
+        // Re-render UI
+        renderGrid();
+        
+        // Send to backend
+        const payload = habits.map(h => ({ id: h.id, position: h.position }));
+        try {
+            await fetch('/api/habits/reorder', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        } catch(e) {
+            console.error("Error reordering", e);
+        }
     }
     
     async function toggleLog(habit_id, date, completed, element) {

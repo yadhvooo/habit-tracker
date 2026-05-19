@@ -28,6 +28,7 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 name TEXT NOT NULL,
+                position INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users (id)
             )
@@ -78,8 +79,18 @@ def register():
         
         db = get_db()
         try:
-            db.execute('INSERT INTO users (username, password) VALUES (?, ?)', 
+            cursor = db.execute('INSERT INTO users (username, password) VALUES (?, ?)', 
                        (username, generate_password_hash(password)))
+            user_id = cursor.lastrowid
+            
+            default_habits = [
+                "Drink 2L Water", "Read 10 Pages", "Exercise 30 Mins", "Meditate",
+                "Sleep 8 Hours", "Wake Up Early", "Eat Healthy", "Journal",
+                "No Social Media", "1 Hour Skill Building"
+            ]
+            for i, habit in enumerate(default_habits):
+                db.execute('INSERT INTO habits (user_id, name, position) VALUES (?, ?, ?)', (user_id, habit, i))
+                
             db.commit()
             return redirect(url_for('login'))
         except sqlite3.IntegrityError:
@@ -105,17 +116,19 @@ def api_habits():
         if not name:
             return jsonify({'error': 'Name is required'}), 400
             
-        cursor = db.execute('INSERT INTO habits (user_id, name) VALUES (?, ?)', (session['user_id'], name))
+        max_pos = db.execute('SELECT MAX(position) as m FROM habits WHERE user_id = ?', (session['user_id'],)).fetchone()['m']
+        pos = (max_pos + 1) if max_pos is not None else 0
+        cursor = db.execute('INSERT INTO habits (user_id, name, position) VALUES (?, ?, ?)', (session['user_id'], name, pos))
         db.commit()
-        return jsonify({'id': cursor.lastrowid, 'name': name}), 201
+        return jsonify({'id': cursor.lastrowid, 'name': name, 'position': pos}), 201
         
     else: # GET
         month = request.args.get('month') # Format YYYY-MM
         if not month:
             month = datetime.date.today().strftime('%Y-%m')
             
-        habits = db.execute('SELECT * FROM habits WHERE user_id = ?', (session['user_id'],)).fetchall()
-        habits_list = [{'id': h['id'], 'name': h['name']} for h in habits]
+        habits = db.execute('SELECT * FROM habits WHERE user_id = ? ORDER BY position ASC, id ASC', (session['user_id'],)).fetchall()
+        habits_list = [{'id': h['id'], 'name': h['name'], 'position': h['position']} for h in habits]
         
         # Get logs for this month
         habit_ids = [h['id'] for h in habits_list]
@@ -132,8 +145,8 @@ def api_habits():
             'logs': logs
         })
 
-@app.route('/api/habits/<int:habit_id>', methods=['DELETE'])
-def api_delete_habit(habit_id):
+@app.route('/api/habits/<int:habit_id>', methods=['DELETE', 'PUT'])
+def api_edit_habit(habit_id):
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
         
@@ -143,8 +156,32 @@ def api_delete_habit(habit_id):
     if not habit:
         return jsonify({'error': 'Not found'}), 404
         
-    db.execute('DELETE FROM habit_logs WHERE habit_id = ?', (habit_id,))
-    db.execute('DELETE FROM habits WHERE id = ?', (habit_id,))
+    if request.method == 'DELETE':
+        db.execute('DELETE FROM habit_logs WHERE habit_id = ?', (habit_id,))
+        db.execute('DELETE FROM habits WHERE id = ?', (habit_id,))
+        db.commit()
+        return jsonify({'success': True})
+        
+    elif request.method == 'PUT':
+        data = request.json
+        new_name = data.get('name')
+        if not new_name:
+            return jsonify({'error': 'Name is required'}), 400
+            
+        db.execute('UPDATE habits SET name = ? WHERE id = ?', (new_name, habit_id))
+        db.commit()
+        return jsonify({'success': True, 'name': new_name})
+
+@app.route('/api/habits/reorder', methods=['PUT'])
+def api_reorder_habits():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+        
+    data = request.json
+    db = get_db()
+    for item in data:
+        db.execute('UPDATE habits SET position = ? WHERE id = ? AND user_id = ?', 
+                   (item['position'], item['id'], session['user_id']))
     db.commit()
     return jsonify({'success': True})
 
