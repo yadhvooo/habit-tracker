@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Habit Tracker{% endblock %}
+
+{% block content %}
+<nav class="navbar glass-panel">
+    <div class="nav-brand">
+        <i class="ph ph-infinity brand-icon"></i>
+        <span>HabitTracker</span>
+    </div>
+    <div class="nav-user">
+        <span class="username">@{{ username }}</span>
+        <a href="{{ url_for('logout') }}" class="btn-icon" title="Logout">
+            <i class="ph ph-sign-out"></i>
+        </a>
+    </div>
+</nav>
+
+<main class="dashboard-container">
+    <header class="dashboard-header">
+        <div class="month-selector">
+            <button class="btn-icon" id="prev-month">
+                <i class="ph ph-caret-left"></i>
+            </button>
+            <h2 id="current-month-display">Loading...</h2>
+            <button class="btn-icon" id="next-month">
+                <i class="ph ph-caret-right"></i>
+            </button>
+        </div>
+        
+        <div class="score-cards">
+            <div class="score-card glass-panel">
+                <div class="score-icon"><i class="ph ph-lightning"></i></div>
+                <div class="score-info">
+                    <span class="score-label">Today's Score</span>
+                    <span class="score-value" id="today-score">0</span>
+                </div>
+            </div>
+            <div class="score-card glass-panel">
+                <div class="score-icon"><i class="ph ph-star"></i></div>
+                <div class="score-info">
+                    <span class="score-label">Monthly Score</span>
+                    <span class="score-value" id="month-score">0</span>
+                </div>
+            </div>
+            <button class="btn-primary" id="add-habit-btn">
+                <i class="ph ph-plus"></i> Add Habit
+            </button>
+        </div>
+    </header>
+
+    <div class="grid-container glass-panel">
+        <div class="table-scroll-wrapper">
+            <table class="habit-grid" id="habit-grid">
+                <thead>
+                    <tr id="grid-header">
+                        <th class="date-col">Date</th>
+                        <!-- Habits will be injected here -->
+                    </tr>
+                </thead>
+                <tbody id="grid-body">
+                    <!-- Days will be injected here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<!-- Add Habit Modal -->
+<div class="modal-overlay" id="add-habit-modal">
+    <div class="modal glass-panel">
+        <div class="modal-header">
+            <h3>Add New Habit</h3>
+            <button class="btn-icon" id="close-modal"><i class="ph ph-x"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="habit-name">Habit Name</label>
+                <input type="text" id="habit-name" placeholder="e.g., Drink 2L Water, Read 10 pages">
+            </div>
+            <button class="btn-primary full-width" id="save-habit-btn">Save Habit</button>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+{% endblock %}
