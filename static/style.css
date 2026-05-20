@@ -398,8 +398,8 @@ a:hover {
 }
 
 .habit-grid th.day-col {
-    min-width: unset;
-    padding: 3px 1px;
+    min-width: 45px;
+    padding: 5px 2px;
 }
 
 .habit-header-content {
@@ -589,14 +589,65 @@ a:hover {
     font-weight: 600;
 }
 
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
 @media (max-width: 768px) {
-    .dashboard-header {
-        flex-direction: column;
-        align-items: flex-start;
+    .navbar {
+        margin: 10px;
+        padding: 10px 15px;
     }
     
+    .nav-brand {
+        font-size: 1rem;
+    }
+    
+    .dashboard-container {
+        padding: 0 10px 20px;
+    }
+
+    .dashboard-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+    }
+    
+    .month-selector {
+        justify-content: space-between;
+    }
+    
+    .month-selector h2 {
+        font-size: 1.2rem;
+        min-width: unset;
+    }
+
     .score-cards {
         width: 100%;
-        justify-content: space-between;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .score-card {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .btn-primary {
+        width: 100%;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .modal {
+        padding: 20px;
+        width: 95%;
+        max-height: 90vh;
+        overflow-y: auto;
     }
 }
