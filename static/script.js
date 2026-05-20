@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize
     updateMonthDisplay();
     fetchData();
+    initTiltEffect();
     
     // Event Listeners
     prevMonthBtn.addEventListener('click', () => {
@@ -73,10 +74,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // Functions
     function updateMonthDisplay() {
         const options = { month: 'long', year: 'numeric' };
         monthDisplay.textContent = currentDate.toLocaleDateString('en-US', options);
+    }
+    
+    function initTiltEffect() {
+        document.querySelectorAll('.score-card').forEach(card => {
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                
+                const rotateX = ((y - centerY) / centerY) * -10;
+                const rotateY = ((x - centerX) / centerX) * 10;
+                
+                card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
+            });
+            
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
+            });
+        });
     }
     
     function getFormattedMonth() {
@@ -95,6 +117,38 @@ document.addEventListener('DOMContentLoaded', () => {
         const m = String(today.getMonth() + 1).padStart(2, '0');
         const d = String(today.getDate()).padStart(2, '0');
         return `${y}-${m}-${d}`;
+    }
+    
+    function calculateStreak(habitId) {
+        let streak = 0;
+        let d = new Date();
+        const todayStr = getTodayString();
+        
+        // Check if today is completed
+        const todayLog = logs.find(l => l.habit_id === habitId && l.date === todayStr);
+        if (todayLog && todayLog.completed) {
+            streak++;
+        }
+        
+        d.setDate(d.getDate() - 1); // Move to yesterday
+        
+        while (true) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const dateStr = `${y}-${m}-${day}`;
+            
+            // Note: This only checks within the fetched logs (usually current month)
+            // A full implementation might need an API endpoint for exact streaks
+            const log = logs.find(l => l.habit_id === habitId && l.date === dateStr);
+            if (log && log.completed) {
+                streak++;
+                d.setDate(d.getDate() - 1);
+            } else {
+                break;
+            }
+        }
+        return streak;
     }
     
     async function fetchData() {
@@ -189,10 +243,14 @@ document.addEventListener('DOMContentLoaded', () => {
             // Habit Column (Sticky Left)
             const tdHabit = document.createElement('td');
             tdHabit.className = 'habit-col';
+            
+            const streak = calculateStreak(habit.id);
+            const streakHtml = streak >= 2 ? `<span class="streak-badge" title="${streak} Day Streak!"><i class="ph-fill ph-fire"></i> ${streak}</span>` : '';
+            
             tdHabit.innerHTML = `
                 <div class="habit-header-content">
                     <i class="ph ph-dots-six-vertical drag-handle" title="Drag to reorder"></i>
-                    <span class="habit-name" title="Double click to edit">${escapeHTML(habit.name)}</span>
+                    <span class="habit-name" title="Double click to edit">${escapeHTML(habit.name)}${streakHtml}</span>
                     <button class="btn-delete" data-id="${habit.id}" title="Delete Habit">
                         <i class="ph ph-trash"></i>
                     </button>
@@ -229,7 +287,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                         } catch(e) { console.error("Error updating name", e); }
                     }
-                    nameSpan.innerHTML = escapeHTML(habit.name);
+                    
+                    const streak = calculateStreak(habit.id);
+                    const streakHtml = streak >= 2 ? `<span class="streak-badge" title="${streak} Day Streak!"><i class="ph-fill ph-fire"></i> ${streak}</span>` : '';
+                    nameSpan.innerHTML = escapeHTML(habit.name) + streakHtml;
                 };
                 
                 input.addEventListener('blur', saveName);

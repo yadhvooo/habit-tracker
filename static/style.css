@@ -29,9 +29,37 @@ body {
     color: var(--text-main);
     min-height: 100vh;
     overflow-x: hidden;
-    background-image: 
-        radial-gradient(circle at 15% 50%, rgba(138, 43, 226, 0.15), transparent 25%),
-        radial-gradient(circle at 85% 30%, rgba(0, 210, 255, 0.15), transparent 25%);
+    position: relative;
+}
+
+/* Canvas Background */
+#bg-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* Entry Animations */
+.fade-in-up {
+    animation: fadeInUp 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    opacity: 0;
+    transform: translateY(30px);
+}
+
+/* Stagger delays */
+.delay-1 { animation-delay: 0.1s; }
+.delay-2 { animation-delay: 0.2s; }
+.delay-3 { animation-delay: 0.3s; }
+
+@keyframes fadeInUp {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 a {
@@ -262,8 +290,18 @@ a:hover {
 .score-card {
     display: flex;
     align-items: center;
-    padding: 10px 20px;
+    padding: 15px 25px;
     gap: 15px;
+    transition: transform 0.1s; /* For JS tilt effect */
+    transform-style: preserve-3d;
+}
+
+.score-card:hover {
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5), 0 0 20px var(--accent-glow);
+}
+
+.score-card > * {
+    transform: translateZ(30px); /* Pop out effect on tilt */
 }
 
 .score-icon {
@@ -422,6 +460,14 @@ a:hover {
     color: var(--accent-secondary);
 }
 
+.habit-row {
+    transition: background 0.3s, transform 0.2s;
+}
+
+.habit-row:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
 .habit-row.dragging {
     opacity: 0.5;
     background: rgba(0, 210, 255, 0.1);
@@ -459,8 +505,41 @@ a:hover {
     background: linear-gradient(135deg, var(--success), #12b886);
     border-color: transparent;
     color: white;
-    box-shadow: 0 0 15px rgba(32, 201, 151, 0.4);
-    transform: scale(1.1);
+    box-shadow: 0 0 15px rgba(32, 201, 151, 0.5);
+    animation: popCheck 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes popCheck {
+    0% { transform: scale(0.8); }
+    50% { transform: scale(1.3); }
+    100% { transform: scale(1.1); }
+}
+
+/* Gamification - Streak Badge */
+.streak-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: rgba(255, 165, 0, 0.15);
+    color: #ffa500;
+    margin-left: 10px;
+    border: 1px solid rgba(255, 165, 0, 0.3);
+    box-shadow: 0 0 10px rgba(255, 165, 0, 0.2);
+    animation: pulseFlame 2s infinite;
+}
+
+.streak-badge .ph-fire {
+    font-size: 0.9rem;
+}
+
+@keyframes pulseFlame {
+    0% { filter: drop-shadow(0 0 2px rgba(255, 165, 0, 0.5)); }
+    50% { filter: drop-shadow(0 0 6px rgba(255, 165, 0, 0.8)); }
+    100% { filter: drop-shadow(0 0 2px rgba(255, 165, 0, 0.5)); }
 }
 
 /* Modal */
