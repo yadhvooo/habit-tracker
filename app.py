@@ -210,5 +210,44 @@ def api_logs():
     
     return jsonify({'success': True})
 
+@app.route('/api/stats', methods=['GET'])
+def api_stats():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+        
+    db = get_db()
+    user_id = session['user_id']
+    
+    query = '''
+        SELECT SUBSTR(hl.date, 1, 7) as month, SUM(hl.completed) as score 
+        FROM habit_logs hl
+        JOIN habits h ON hl.habit_id = h.id
+        WHERE h.user_id = ? AND hl.completed = 1
+        GROUP BY month
+    '''
+    monthly_scores = db.execute(query, (user_id,)).fetchall()
+    
+    total_active_habits = db.execute('SELECT COUNT(*) as count FROM habits WHERE user_id = ?', (user_id,)).fetchone()['count']
+    
+    if not monthly_scores:
+        return jsonify({
+            'best_month_score': 0,
+            'avg_month_score': 0,
+            'total_completions': 0,
+            'total_active_habits': total_active_habits
+        })
+        
+    scores = [row['score'] for row in monthly_scores]
+    best_month_score = max(scores)
+    total_completions = sum(scores)
+    avg_month_score = round(total_completions / len(scores), 1)
+    
+    return jsonify({
+        'best_month_score': best_month_score,
+        'avg_month_score': avg_month_score,
+        'total_completions': total_completions,
+        'total_active_habits': total_active_habits
+    })
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

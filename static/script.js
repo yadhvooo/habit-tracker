@@ -20,6 +20,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveHabitBtn = document.getElementById('save-habit-btn');
     const habitNameInput = document.getElementById('habit-name');
     
+    const scoreHistoryBtn = document.getElementById('score-history-btn');
+    const scoreHistoryModal = document.getElementById('score-history-modal');
+    const closeScoreModalBtn = document.getElementById('close-score-modal');
+    const statBestMonth = document.getElementById('stat-best-month');
+    const statAvgMonth = document.getElementById('stat-avg-month');
+    const statTotalCompletions = document.getElementById('stat-total-completions');
+    const statActiveHabits = document.getElementById('stat-active-habits');
+    
     // Initialize
     updateMonthDisplay();
     fetchData();
@@ -42,6 +50,33 @@ document.addEventListener('DOMContentLoaded', () => {
     addHabitBtn.addEventListener('click', () => {
         addHabitModal.classList.add('active');
         habitNameInput.focus();
+    });
+    
+    scoreHistoryBtn.addEventListener('click', async () => {
+        scoreHistoryModal.classList.add('active');
+        
+        try {
+            const res = await fetch('/api/stats');
+            if(res.ok) {
+                const stats = await res.json();
+                animateValue(statBestMonth, 0, stats.best_month_score, 800);
+                animateValue(statAvgMonth, 0, Math.round(stats.avg_month_score), 800);
+                animateValue(statTotalCompletions, 0, stats.total_completions, 800);
+                animateValue(statActiveHabits, 0, stats.total_active_habits, 800);
+            }
+        } catch(e) {
+            console.error("Error fetching stats", e);
+        }
+    });
+    
+    closeScoreModalBtn.addEventListener('click', () => {
+        scoreHistoryModal.classList.remove('active');
+    });
+    
+    scoreHistoryModal.addEventListener('click', (e) => {
+        if(e.target === scoreHistoryModal) {
+            closeScoreModalBtn.click();
+        }
     });
     
     closeModalBtn.addEventListener('click', () => {

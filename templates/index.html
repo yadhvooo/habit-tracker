@@ -29,18 +29,11 @@
         </div>
         
         <div class="score-cards">
-            <div class="score-card glass-panel">
+            <div class="score-card glass-panel" id="score-history-btn" style="cursor: pointer;" title="View Score History">
                 <div class="score-icon"><i class="ph ph-lightning"></i></div>
                 <div class="score-info">
                     <span class="score-label">Today's Score</span>
                     <span class="score-value" id="today-score">0</span>
-                </div>
-            </div>
-            <div class="score-card glass-panel">
-                <div class="score-icon"><i class="ph ph-star"></i></div>
-                <div class="score-info">
-                    <span class="score-label">Monthly Score</span>
-                    <span class="score-value" id="month-score">0</span>
                 </div>
             </div>
             <button class="btn-primary" id="add-habit-btn">
@@ -79,6 +72,45 @@
                 <input type="text" id="habit-name" placeholder="e.g., Drink 2L Water, Read 10 pages">
             </div>
             <button class="btn-primary full-width" id="save-habit-btn">Save Habit</button>
+        </div>
+    </div>
+</div>
+
+<!-- Score History Modal -->
+<div class="modal-overlay" id="score-history-modal">
+    <div class="modal glass-panel">
+        <div class="modal-header">
+            <h3>Score History</h3>
+            <button class="btn-icon" id="close-score-modal"><i class="ph ph-x"></i></button>
+        </div>
+        <div class="modal-body">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 10px;">
+                <div class="glass-panel" style="padding: 15px; text-align: center; grid-column: 1 / -1;">
+                    <div style="font-size: 2rem; color: var(--accent-secondary); margin-bottom: 5px;"><i class="ph-fill ph-star"></i></div>
+                    <div style="font-size: 2rem; font-weight: bold;" id="month-score">0</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Current Month Score</div>
+                </div>
+                <div class="glass-panel" style="padding: 15px; text-align: center;">
+                    <div style="font-size: 2rem; color: #ffd700; margin-bottom: 5px;"><i class="ph-fill ph-trophy"></i></div>
+                    <div style="font-size: 1.5rem; font-weight: bold;" id="stat-best-month">0</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Best Month</div>
+                </div>
+                <div class="glass-panel" style="padding: 15px; text-align: center;">
+                    <div style="font-size: 2rem; color: var(--accent-secondary); margin-bottom: 5px;"><i class="ph-fill ph-chart-line-up"></i></div>
+                    <div style="font-size: 1.5rem; font-weight: bold;" id="stat-avg-month">0</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Avg / Month</div>
+                </div>
+                <div class="glass-panel" style="padding: 15px; text-align: center;">
+                    <div style="font-size: 2rem; color: var(--success); margin-bottom: 5px;"><i class="ph-fill ph-check-circle"></i></div>
+                    <div style="font-size: 1.5rem; font-weight: bold;" id="stat-total-completions">0</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">All-Time Completions</div>
+                </div>
+                <div class="glass-panel" style="padding: 15px; text-align: center;">
+                    <div style="font-size: 2rem; color: var(--accent-primary); margin-bottom: 5px;"><i class="ph-fill ph-list-numbers"></i></div>
+                    <div style="font-size: 1.5rem; font-weight: bold;" id="stat-active-habits">0</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Active Habits</div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
