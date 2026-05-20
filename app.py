@@ -6,7 +6,10 @@ import datetime
 
 app = Flask(__name__)
 app.secret_key = 'super_secret_key_for_habit_tracker' # In production use os.urandom(24)
-DATABASE = 'habit_tracker.db'
+
+# Use absolute path for database so it works on PythonAnywhere
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATABASE = os.path.join(BASE_DIR, 'habit_tracker.db')
 
 def get_db():
     conn = sqlite3.connect(DATABASE)
