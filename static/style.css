@@ -385,13 +385,14 @@ a:hover {
     z-index: 20;
     min-width: 150px;
     position: sticky;
+    background-color: #0f111a;
+    border-right: 2px solid var(--panel-border);
 }
 
 .habit-grid td.habit-col {
     position: sticky;
     left: 0;
-    background: var(--bg-dark); /* Fallback */
-    background: rgba(15, 17, 26, 0.95);
+    background-color: #0f111a;
     font-weight: 500;
     z-index: 5;
     border-right: 2px solid var(--panel-border);
@@ -479,6 +480,9 @@ a:hover {
 
 /* Checkbox Animations */
 .checkbox-cell {
+    min-width: 45px;
+    padding: 5px 2px;
+    text-align: center;
     cursor: pointer;
     transition: background 0.2s;
 }
