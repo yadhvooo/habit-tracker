@@ -9,6 +9,11 @@
         <span>HabitTracker</span>
     </div>
     <div class="nav-user">
+        {% if is_admin %}
+        <a href="{{ url_for('users_dashboard') }}" class="btn-icon" style="font-size: 1rem; margin-right: 10px; border-radius: 8px; padding: 5px 10px; background: rgba(0, 210, 255, 0.1);" title="Manage Users">
+            <i class="ph ph-users"></i>
+        </a>
+        {% endif %}
         <span class="username">@{{ username }}</span>
         <a href="{{ url_for('logout') }}" class="btn-icon" title="Logout">
             <i class="ph ph-sign-out"></i>

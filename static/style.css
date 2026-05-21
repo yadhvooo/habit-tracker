@@ -399,7 +399,6 @@ a:hover {
 }
 
 .habit-grid th.day-col {
-    min-width: 45px;
     padding: 5px 2px;
 }
 
@@ -480,7 +479,6 @@ a:hover {
 
 /* Checkbox Animations */
 .checkbox-cell {
-    min-width: 45px;
     padding: 5px 2px;
     text-align: center;
     cursor: pointer;
@@ -653,5 +651,9 @@ a:hover {
         width: 95%;
         max-height: 90vh;
         overflow-y: auto;
+    }
+    
+    .habit-grid th.day-col, .checkbox-cell {
+        min-width: 45px;
     }
 }

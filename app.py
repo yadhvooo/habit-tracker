@@ -16,6 +16,13 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
+ADMIN_USERNAMES = ['yadhu', 'yadhukrishna']
+
+@app.context_processor
+def inject_admin_status():
+    is_admin = session.get('username') in ADMIN_USERNAMES
+    return dict(is_admin=is_admin)
+
 def init_db():
     with app.app_context():
         db = get_db()
@@ -54,7 +61,8 @@ init_db()
 def index():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    return render_template('index.html', username=session.get('username'))
+    is_admin = session.get('username') in ADMIN_USERNAMES
+    return render_template('index.html', username=session.get('username'), is_admin=is_admin)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -251,6 +259,48 @@ def api_stats():
         'total_completions': total_completions,
         'total_active_habits': total_active_habits
     })
+
+@app.route('/users')
+def users_dashboard():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+        
+    if session.get('username') not in ADMIN_USERNAMES:
+        return "Access Denied: You do not have permission to view this page.", 403
+        
+    db = get_db()
+    users = db.execute('''
+        SELECT u.id, u.username, COUNT(h.id) as habit_count
+        FROM users u
+        LEFT JOIN habits h ON u.id = h.user_id
+        GROUP BY u.id
+    ''').fetchall()
+    
+    return render_template('users.html', username=session.get('username'), users=users)
+
+@app.route('/users/delete/<int:user_id>', methods=['POST'])
+def delete_user_route(user_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+        
+    if session.get('username') not in ADMIN_USERNAMES:
+        return "Access Denied: You do not have permission to perform this action.", 403
+        
+    if user_id == session.get('user_id'):
+        # Just return an error or handle it. Let's just flash or return string for simplicity.
+        return "Cannot delete your own account from the dashboard.", 400
+        
+    db = get_db()
+    # First, delete associated logs and habits
+    habits = db.execute('SELECT id FROM habits WHERE user_id = ?', (user_id,)).fetchall()
+    for habit in habits:
+        db.execute('DELETE FROM habit_logs WHERE habit_id = ?', (habit['id'],))
+        
+    db.execute('DELETE FROM habits WHERE user_id = ?', (user_id,))
+    db.execute('DELETE FROM users WHERE id = ?', (user_id,))
+    db.commit()
+    
+    return redirect(url_for('users_dashboard'))
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
