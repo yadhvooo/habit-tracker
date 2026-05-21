@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, g
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
 import os
@@ -12,9 +12,16 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATABASE = os.path.join(BASE_DIR, 'habit_tracker.db')
 
 def get_db():
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    return conn
+    if 'db' not in g:
+        g.db = sqlite3.connect(DATABASE, timeout=20)
+        g.db.row_factory = sqlite3.Row
+    return g.db
+
+@app.teardown_appcontext
+def close_db(error):
+    db = g.pop('db', None)
+    if db is not None:
+        db.close()
 
 ADMIN_USERNAMES = ['yadhu', 'yadhukrishna']
 
@@ -291,11 +298,8 @@ def delete_user_route(user_id):
         return "Cannot delete your own account from the dashboard.", 400
         
     db = get_db()
-    # First, delete associated logs and habits
-    habits = db.execute('SELECT id FROM habits WHERE user_id = ?', (user_id,)).fetchall()
-    for habit in habits:
-        db.execute('DELETE FROM habit_logs WHERE habit_id = ?', (habit['id'],))
-        
+    # Delete associated logs and habits efficiently
+    db.execute('DELETE FROM habit_logs WHERE habit_id IN (SELECT id FROM habits WHERE user_id = ?)', (user_id,))
     db.execute('DELETE FROM habits WHERE user_id = ?', (user_id,))
     db.execute('DELETE FROM users WHERE id = ?', (user_id,))
     db.commit()
