@@ -7,12 +7,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=4">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=100">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 </head>
 <body>
-    <canvas id="bg-canvas"></canvas>
+    <canvas id="bg-canvas" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none;"></canvas>
     {% block content %}{% endblock %}
-    <script src="{{ url_for('static', filename='background.js') }}"></script>
+    <script src="{{ url_for('static', filename='background.js') }}?v=104"></script>
 </body>
 </html>

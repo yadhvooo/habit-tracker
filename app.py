@@ -37,9 +37,23 @@ def init_db():
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL
+                password TEXT NOT NULL,
+                bg_animation INTEGER DEFAULT 0,
+                bg_music INTEGER DEFAULT 0
             )
         ''')
+        
+        # Attempt to add columns for existing databases
+        try:
+            db.execute('ALTER TABLE users ADD COLUMN bg_animation INTEGER DEFAULT 0')
+        except sqlite3.OperationalError:
+            pass
+            
+        try:
+            db.execute('ALTER TABLE users ADD COLUMN bg_music INTEGER DEFAULT 0')
+        except sqlite3.OperationalError:
+            pass
+            
         db.execute('''
             CREATE TABLE IF NOT EXISTS habits (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -120,6 +134,31 @@ def register():
 def logout():
     session.clear()
     return redirect(url_for('login'))
+
+@app.route('/api/settings', methods=['GET', 'PUT'])
+def api_settings():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+        
+    db = get_db()
+    if request.method == 'GET':
+        user = db.execute('SELECT bg_animation, bg_music FROM users WHERE id = ?', (session['user_id'],)).fetchone()
+        if user:
+            return jsonify({
+                'bg_animation': user['bg_animation'] if user['bg_animation'] is not None else 0,
+                'bg_music': bool(user['bg_music'])
+            })
+        return jsonify({'error': 'User not found'}), 404
+        
+    elif request.method == 'PUT':
+        data = request.json
+        bg_animation = data.get('bg_animation', 0)
+        bg_music = 1 if data.get('bg_music') else 0
+        
+        db.execute('UPDATE users SET bg_animation = ?, bg_music = ? WHERE id = ?', 
+                   (bg_animation, bg_music, session['user_id']))
+        db.commit()
+        return jsonify({'success': True})
 
 @app.route('/api/habits', methods=['GET', 'POST'])
 def api_habits():

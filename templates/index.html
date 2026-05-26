@@ -15,6 +15,9 @@
         </a>
         {% endif %}
         <span class="username">@{{ username }}</span>
+        <button id="settings-btn" class="btn-icon" title="Settings" style="margin-left: 10px;" onclick="document.getElementById('settings-modal').classList.add('active');">
+            <i class="ph ph-gear"></i>
+        </button>
         <a href="{{ url_for('logout') }}" class="btn-icon" title="Logout">
             <i class="ph ph-sign-out"></i>
         </a>
@@ -23,14 +26,8 @@
 
 <main class="dashboard-container">
     <header class="dashboard-header fade-in-up delay-2">
-        <div class="month-selector">
-            <button class="btn-icon" id="prev-month">
-                <i class="ph ph-caret-left"></i>
-            </button>
-            <h2 id="current-month-display">Loading...</h2>
-            <button class="btn-icon" id="next-month">
-                <i class="ph ph-caret-right"></i>
-            </button>
+        <div class="dashboard-title-container">
+            <h2 id="current-month-display" style="font-size: 1.5rem; font-weight: 600;">Loading...</h2>
         </div>
         
         <div class="score-cards">
@@ -118,6 +115,98 @@
             </div>
         </div>
     </div>
+</div>
 
-<script src="{{ url_for('static', filename='script.js') }}"></script>
+<style>
+/* Bulletproof Settings Modal */
+#settings-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.85);
+    z-index: 999999;
+    display: none; /* Blocked initially */
+    align-items: center;
+    justify-content: center;
+}
+
+#settings-modal.active {
+    display: flex !important;
+}
+
+.bulletproof-modal {
+    width: 90%;
+    max-width: 500px;
+    background-color: #1a1d2d;
+    border: 2px solid #00d2ff;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 0 50px rgba(0, 0, 0, 1);
+    color: white;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.bg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; }
+.bg-option { background: #2a2d3d; border: 1px solid #4a4d5d; padding: 15px 5px; text-align: center; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+.bg-option.active { border-color: #00d2ff; background: rgba(0, 210, 255, 0.2); color: #00d2ff; }
+
+.toggle-switch { position: relative; display: inline-block; width: 50px; height: 24px; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .4s; border-radius: 24px; }
+.slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+input:checked + .slider { background-color: #00d2ff; }
+input:checked + .slider:before { transform: translateX(26px); }
+</style>
+
+<!-- Settings Modal -->
+<div id="settings-modal">
+    <div class="bulletproof-modal">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 20px;">
+            <h3 style="margin: 0; font-size: 1.5rem;">Settings</h3>
+            <button class="btn-icon" id="close-settings-modal" style="background: none; border: none; color: white; cursor: pointer; font-size: 1.5rem;" onclick="document.getElementById('settings-modal').classList.remove('active');"><i class="ph ph-x"></i></button>
+        </div>
+        <div class="modal-body">
+            
+            <div class="settings-section" style="margin-bottom: 25px;">
+                <h4 style="margin-bottom: 10px; color: #aaa; text-transform: uppercase;">Time Period</h4>
+                <div class="month-selector" style="display: flex; align-items: center; justify-content: space-between; background: #2a2d3d; padding: 15px; border-radius: 8px;">
+                    <button id="prev-month" style="background: none; border: none; color: white; cursor: pointer; font-size: 1.5rem;"><i class="ph ph-caret-left"></i></button>
+                    <h2 id="settings-month-display" style="font-size: 1.3rem; margin: 0;">Loading...</h2>
+                    <button id="next-month" style="background: none; border: none; color: white; cursor: pointer; font-size: 1.5rem;"><i class="ph ph-caret-right"></i></button>
+                </div>
+            </div>
+
+            <div class="settings-section" style="margin-bottom: 25px;">
+                <h4 style="margin-bottom: 10px; color: #aaa; text-transform: uppercase;">Background Animation</h4>
+                <div class="bg-grid">
+                    <div class="bg-option active" data-bg="0">Interactive Galaxy</div>
+                    <div class="bg-option" data-bg="1">Fluid Magic Trails</div>
+                    <div class="bg-option" data-bg="2">Liquid Orbs</div>
+                    <div class="bg-option" data-bg="3">Atomic Bonds</div>
+                    <div class="bg-option" data-bg="4">Electric Connections</div>
+                </div>
+            </div>
+
+            <div class="settings-section" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; padding: 15px; background: #2a2d3d; border-radius: 8px;">
+                <h4 style="margin: 0; color: #aaa; text-transform: uppercase;">Background Music</h4>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="bg-music-toggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            
+            <button id="save-settings-btn" style="width: 100%; padding: 15px; background: #00d2ff; color: #000; border: none; border-radius: 8px; font-weight: bold; font-size: 1.1rem; cursor: pointer;">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<!-- Local Audio Player for Background Music (100% Reliable) -->
+<audio id="bg-audio" loop>
+    <source src="{{ url_for('static', filename='audio/epic.mp3') }}" type="audio/mpeg">
+</audio>
+
+<script src="{{ url_for('static', filename='script.js') }}?v=109"></script>
 {% endblock %}

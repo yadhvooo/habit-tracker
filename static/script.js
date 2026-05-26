@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // DOM Elements
     const monthDisplay = document.getElementById('current-month-display');
+    const settingsMonthDisplay = document.getElementById('settings-month-display');
     const prevMonthBtn = document.getElementById('prev-month');
     const nextMonthBtn = document.getElementById('next-month');
     const gridHeader = document.getElementById('grid-header');
@@ -28,9 +29,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const statTotalCompletions = document.getElementById('stat-total-completions');
     const statActiveHabits = document.getElementById('stat-active-habits');
     
+    // Settings Elements
+    const settingsBtn = document.getElementById('settings-btn');
+    const settingsModal = document.getElementById('settings-modal');
+    const closeSettingsBtn = document.getElementById('close-settings-modal');
+    const saveSettingsBtn = document.getElementById('save-settings-btn');
+    const bgOptions = document.querySelectorAll('.bg-option');
+    const bgMusicToggle = document.getElementById('bg-music-toggle');
+    
     // Initialize
     updateMonthDisplay();
     fetchData();
+    fetchSettings();
     initTiltEffect();
     
     // Event Listeners
@@ -109,9 +119,117 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
+    // Settings Logic
+    let currentSettings = { bg_animation: 0, bg_music: false };
+    let userInteracted = false;
+    
+    window.addEventListener('click', () => {
+        if(!userInteracted) {
+            userInteracted = true;
+            applyMusicSetting();
+        }
+    }, {once: true});
+
+    async function fetchSettings() {
+        try {
+            const res = await fetch('/api/settings');
+            if(res.ok) {
+                currentSettings = await res.json();
+                applySettingsToUI();
+                applyBgAnimation();
+                if(userInteracted) applyMusicSetting();
+            }
+        } catch(e) {
+            console.error("Error fetching settings", e);
+        }
+    }
+
+    function applySettingsToUI() {
+        bgOptions.forEach(opt => {
+            if(parseInt(opt.dataset.bg) === currentSettings.bg_animation) {
+                opt.classList.add('active');
+            } else {
+                opt.classList.remove('active');
+            }
+        });
+        if(bgMusicToggle) bgMusicToggle.checked = currentSettings.bg_music;
+    }
+
+    const bgAudio = document.getElementById('bg-audio');
+
+    function applyBgAnimation() {
+        window.dispatchEvent(new CustomEvent('changeBgAnimation', { detail: currentSettings.bg_animation }));
+    }
+
+    function applyMusicSetting() {
+        if(!bgAudio) return;
+        
+        if(currentSettings.bg_music) {
+            bgAudio.play().catch(e => console.log("Audio autoplay blocked until interaction:", e));
+        } else {
+            bgAudio.pause();
+        }
+    }
+
+    if(settingsBtn) {
+        settingsBtn.addEventListener('click', () => {
+            settingsModal.classList.add('active');
+            applySettingsToUI();
+        });
+    }
+    
+    if(closeSettingsBtn) {
+        closeSettingsBtn.addEventListener('click', () => {
+            settingsModal.classList.remove('active');
+            fetchData(); 
+        });
+    }
+
+    if(settingsModal) {
+        settingsModal.addEventListener('click', (e) => {
+            if(e.target === settingsModal) {
+                closeSettingsBtn.click();
+            }
+        });
+    }
+
+    bgOptions.forEach(opt => {
+        opt.addEventListener('click', () => {
+            bgOptions.forEach(o => o.classList.remove('active'));
+            opt.classList.add('active');
+        });
+    });
+
+    if(saveSettingsBtn) {
+        saveSettingsBtn.addEventListener('click', async () => {
+            const selectedBg = document.querySelector('.bg-option.active');
+            const bg_animation = selectedBg ? parseInt(selectedBg.dataset.bg) : 0;
+            const bg_music = bgMusicToggle ? bgMusicToggle.checked : false;
+            
+            try {
+                const res = await fetch('/api/settings', {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({bg_animation, bg_music})
+                });
+                
+                if(res.ok) {
+                    currentSettings = {bg_animation, bg_music};
+                    applyBgAnimation();
+                    applyMusicSetting();
+                    closeSettingsBtn.click();
+                }
+            } catch(e) {
+                console.error("Error saving settings", e);
+            }
+        });
+    }
+    
     function updateMonthDisplay() {
         const options = { month: 'long', year: 'numeric' };
-        monthDisplay.textContent = currentDate.toLocaleDateString('en-US', options);
+        const text = currentDate.toLocaleDateString('en-US', options);
+        if(monthDisplay) monthDisplay.textContent = text;
+        if(settingsMonthDisplay) settingsMonthDisplay.textContent = text;
     }
     
     function initTiltEffect() {

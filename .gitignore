@@ -11,6 +11,12 @@ env/
 __pycache__/
 *.pyc
 
+# Downloaded binaries and generated media tools
+ffmpeg.exe
+ffmpeg.zip
+ffmpeg_extracted/
+yt-dlp.exe
+
 # OS Files
 .DS_Store
 Thumbs.db
