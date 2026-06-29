@@ -74,6 +74,32 @@ def init_db():
                 UNIQUE(habit_id, date)
             )
         ''')
+        db.execute('''
+            CREATE TABLE IF NOT EXISTS journals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                date TEXT NOT NULL,
+                content TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id),
+                UNIQUE(user_id, date)
+            )
+        ''')
+        db.execute('''
+            CREATE TABLE IF NOT EXISTS notes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                start_date TEXT,
+                expires_at TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        ''')
+        try:
+            db.execute('ALTER TABLE notes ADD COLUMN start_date TEXT')
+        except sqlite3.OperationalError:
+            pass
         db.commit()
 
 init_db()
@@ -344,6 +370,117 @@ def delete_user_route(user_id):
     db.commit()
     
     return redirect(url_for('users_dashboard'))
+
+@app.route('/api/journal', methods=['GET', 'POST'])
+def api_journal():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+        
+    db = get_db()
+    user_id = session['user_id']
+    
+    if request.method == 'POST':
+        data = request.json
+        date = data.get('date')
+        content = data.get('content', '')
+        
+        if not date:
+            return jsonify({'error': 'Date is required'}), 400
+            
+        existing = db.execute('SELECT id FROM journals WHERE user_id = ? AND date = ?', (user_id, date)).fetchone()
+        if existing:
+            db.execute('UPDATE journals SET content = ? WHERE id = ?', (content, existing['id']))
+        else:
+            db.execute('INSERT INTO journals (user_id, date, content) VALUES (?, ?, ?)', (user_id, date, content))
+        db.commit()
+        return jsonify({'success': True})
+        
+    else: # GET
+        date = request.args.get('date')
+        if not date:
+            return jsonify({'error': 'Date is required'}), 400
+            
+        journal = db.execute('SELECT content FROM journals WHERE user_id = ? AND date = ?', (user_id, date)).fetchone()
+        return jsonify({'content': journal['content'] if journal else ''})
+
+@app.route('/api/journals', methods=['GET'])
+def api_journals_list():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+        
+    db = get_db()
+    user_id = session['user_id']
+    
+    search_query = request.args.get('search', '').lower()
+    date_query = request.args.get('date', '')
+    
+    query = "SELECT date, content FROM journals WHERE user_id = ? AND TRIM(content) != '' AND content IS NOT NULL"
+    params = [user_id]
+    
+    if date_query:
+        query += ' AND date = ?'
+        params.append(date_query)
+        
+    if search_query:
+        query += ' AND LOWER(content) LIKE ?'
+        params.append(f'%{search_query}%')
+        
+    query += ' ORDER BY date DESC'
+    
+    journals = db.execute(query, params).fetchall()
+    return jsonify([{'date': j['date'], 'content': j['content']} for j in journals])
+
+@app.route('/api/notes', methods=['GET', 'POST'])
+def api_notes():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    db = get_db()
+    user_id = session['user_id']
+    
+    if request.method == 'POST':
+        data = request.json
+        content = data.get('content', '')
+        start_date = data.get('start_date', '')
+        expires_at = data.get('expires_at', '')
+        
+        cursor = db.execute('INSERT INTO notes (user_id, content, start_date, expires_at) VALUES (?, ?, ?, ?)', (user_id, content, start_date, expires_at))
+        db.commit()
+        return jsonify({'id': cursor.lastrowid})
+        
+    else: # GET
+        today = datetime.date.today().strftime('%Y-%m-%d')
+        db.execute("DELETE FROM notes WHERE user_id = ? AND expires_at != '' AND expires_at IS NOT NULL AND expires_at < ?", (user_id, today))
+        db.commit()
+        
+        notes = db.execute('SELECT * FROM notes WHERE user_id = ? ORDER BY id DESC', (user_id,)).fetchall()
+        return jsonify([{'id': n['id'], 'content': n['content'], 'start_date': n['start_date'] if n['start_date'] else '', 'expires_at': n['expires_at'] if n['expires_at'] else ''} for n in notes])
+
+@app.route('/api/notes/<int:note_id>', methods=['PUT', 'DELETE'])
+def api_note_detail(note_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+        
+    db = get_db()
+    user_id = session['user_id']
+    
+    note = db.execute('SELECT * FROM notes WHERE id = ? AND user_id = ?', (note_id, user_id)).fetchone()
+    if not note:
+        return jsonify({'error': 'Not found'}), 404
+        
+    if request.method == 'PUT':
+        data = request.json
+        content = data.get('content', note['content'])
+        start_date = data.get('start_date', note['start_date'])
+        expires_at = data.get('expires_at', note['expires_at'])
+        db.execute('UPDATE notes SET content = ?, start_date = ?, expires_at = ? WHERE id = ?', (content, start_date, expires_at, note_id))
+        db.commit()
+        return jsonify({'success': True})
+        
+    elif request.method == 'DELETE':
+        db.execute('DELETE FROM notes WHERE id = ?', (note_id,))
+        db.commit()
+        return jsonify({'success': True})
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

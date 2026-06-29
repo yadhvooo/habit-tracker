@@ -38,6 +38,12 @@
                     <span class="score-value" id="today-score">0</span>
                 </div>
             </div>
+            <button class="btn-secondary" id="view-notes-btn" style="margin-right: 10px; background: rgba(0, 255, 128, 0.1); color: #00ff80; border: 1px solid #00ff80; cursor: pointer; padding: 10px 15px; border-radius: 8px; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: all 0.3s;">
+                <i class="ph ph-note"></i> Notes
+            </button>
+            <button class="btn-secondary" id="view-journals-btn" style="margin-right: 10px; background: rgba(0, 210, 255, 0.1); color: var(--accent-primary); border: 1px solid var(--accent-primary); cursor: pointer; padding: 10px 15px; border-radius: 8px; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: all 0.3s;">
+                <i class="ph ph-book-open"></i> Journals
+            </button>
             <button class="btn-primary" id="add-habit-btn">
                 <i class="ph ph-plus"></i> Add Habit
             </button>
@@ -160,6 +166,66 @@
 input:checked + .slider { background-color: #00d2ff; }
 input:checked + .slider:before { transform: translateX(26px); }
 </style>
+
+<!-- Notes Hover Preview (Global Overlay) -->
+<div id="notes-hover-preview" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(26, 29, 45, 0.95); border: 2px solid #00ff80; padding: 40px; border-radius: 16px; width: 600px; max-width: 90vw; z-index: 9999; box-shadow: 0 20px 60px rgba(0,255,128,0.2); pointer-events: none; backdrop-filter: blur(10px);">
+    <strong style="color: #00ff80; display: block; margin-bottom: 20px; font-size: 1.5rem; text-align: center;"><i class="ph-fill ph-notebook"></i> Note</strong>
+    <div id="notes-hover-content" style="font-size: 1.2rem; line-height: 1.6; color: #fff; white-space: pre-wrap; max-height: 60vh; overflow-y: auto; text-align: center;"></div>
+</div>
+
+<!-- Notes Modal -->
+<div class="modal-overlay" id="notes-modal">
+    <div class="modal glass-panel" style="max-width: 800px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; background: #1a1d2d; border: 2px solid #00ff80;">
+        <div class="modal-header" style="flex-shrink: 0; border-bottom: 1px solid rgba(0,255,128,0.2); padding-bottom: 15px; margin-bottom: 15px;">
+            <h3 style="color: #00ff80; margin: 0; display: flex; align-items: center; gap: 8px;"><i class="ph-fill ph-notebook"></i> Sticky Notes</h3>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-primary" id="add-note-btn" style="background: #00ff80; color: #000;"><i class="ph ph-plus"></i> New Note</button>
+                <button class="btn-icon" id="close-notes-modal"><i class="ph ph-x"></i></button>
+            </div>
+        </div>
+        <div class="modal-body" style="flex-grow: 1; overflow-y: auto; padding-right: 5px;">
+            <div id="notes-list-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; align-items: start;">
+                <!-- Note cards will be injected here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Journals List Modal -->
+<div class="modal-overlay" id="journals-list-modal">
+    <div class="modal glass-panel" style="max-width: 700px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+        <div class="modal-header" style="flex-shrink: 0;">
+            <h3 id="journals-modal-title">Past Journals</h3>
+            <button class="btn-icon" id="close-journals-list-modal"><i class="ph ph-x"></i></button>
+        </div>
+        <div class="modal-body" style="flex-grow: 1; overflow-y: auto; padding-right: 5px;">
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <input type="text" id="journal-search-input" placeholder="Search entries..." style="flex-grow: 1; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.2); color: white; border: 1px solid #4a4d5d; font-family: inherit;">
+                <input type="date" id="journal-date-input" style="padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.2); color: white; border: 1px solid #4a4d5d; font-family: inherit; color-scheme: dark;">
+                <button class="btn-icon" id="clear-journal-filters" title="Clear Filters" style="background: rgba(255,255,255,0.1); border-radius: 8px;"><i class="ph ph-funnel-x"></i></button>
+            </div>
+            <div id="journals-list-container" style="display: flex; flex-direction: column; gap: 15px;">
+                <!-- Journal cards will be injected here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Journal Modal -->
+<div class="modal-overlay" id="journal-modal">
+    <div class="modal glass-panel" style="max-width: 600px; width: 90%;">
+        <div class="modal-header">
+            <h3>Today's Journal</h3>
+            <button class="btn-icon" id="close-journal-modal"><i class="ph ph-x"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <textarea id="journal-content" placeholder="How was your day? What's on your mind?" style="width: 100%; height: 200px; padding: 15px; border-radius: 8px; background: rgba(0,0,0,0.2); color: white; border: 1px solid #4a4d5d; resize: vertical; font-family: inherit; margin-bottom: 15px;"></textarea>
+            </div>
+            <button class="btn-primary full-width" id="save-journal-btn">Save Journal</button>
+        </div>
+    </div>
+</div>
 
 <!-- Settings Modal -->
 <div id="settings-modal">

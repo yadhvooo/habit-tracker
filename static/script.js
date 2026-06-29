@@ -37,10 +37,35 @@ document.addEventListener('DOMContentLoaded', () => {
     const bgOptions = document.querySelectorAll('.bg-option');
     const bgMusicToggle = document.getElementById('bg-music-toggle');
     
+    // Journal Elements
+    const journalModal = document.getElementById('journal-modal');
+    const closeJournalModalBtn = document.getElementById('close-journal-modal');
+    const journalContent = document.getElementById('journal-content');
+    const saveJournalBtn = document.getElementById('save-journal-btn');
+    let currentJournalHabitId = null;
+    let currentJournalDate = null;
+    
+    // Journals List Elements
+    const viewJournalsBtn = document.getElementById('view-journals-btn');
+    const journalsListModal = document.getElementById('journals-list-modal');
+    const closeJournalsListModalBtn = document.getElementById('close-journals-list-modal');
+    const journalSearchInput = document.getElementById('journal-search-input');
+    const journalDateInput = document.getElementById('journal-date-input');
+    const clearJournalFiltersBtn = document.getElementById('clear-journal-filters');
+    const journalsListContainer = document.getElementById('journals-list-container');
+    
+    // Notes Elements
+    const viewNotesBtn = document.getElementById('view-notes-btn');
+    const notesModal = document.getElementById('notes-modal');
+    const closeNotesModalBtn = document.getElementById('close-notes-modal');
+    const addNoteBtn = document.getElementById('add-note-btn');
+    const notesListContainer = document.getElementById('notes-list-container');
+    
     // Initialize
     updateMonthDisplay();
     fetchData();
     fetchSettings();
+    fetchNotesList(); // pre-load notes for hover
     initTiltEffect();
     
     // Event Listeners
@@ -118,6 +143,446 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Error saving habit", e);
         }
     });
+
+    if (saveJournalBtn) {
+        saveJournalBtn.addEventListener('click', async () => {
+            if (!currentJournalDate) return;
+            const content = journalContent.value.trim();
+            try {
+                const res = await fetch('/api/journal', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({date: currentJournalDate, content})
+                });
+                if(res.ok) {
+                    if(journalModal) journalModal.classList.remove('active');
+                    
+                    const isCompleted = content !== '';
+                    await fetch('/api/logs', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({habit_id: currentJournalHabitId, date: currentJournalDate, completed: isCompleted})
+                    });
+                    
+                    fetchData();
+                }
+            } catch(e) { console.error("Error saving journal", e); }
+        });
+    }
+
+    if (closeJournalModalBtn) {
+        closeJournalModalBtn.addEventListener('click', () => {
+            journalModal.classList.remove('active');
+        });
+    }
+    
+    if (journalModal) {
+        journalModal.addEventListener('click', (e) => {
+            if(e.target === journalModal) {
+                journalModal.classList.remove('active');
+            }
+        });
+    }
+    
+    // View Journals List Logic
+    let fetchJournalsTimeout = null;
+    
+    const fetchJournalsList = async () => {
+        if (!journalsListContainer) return;
+        const search = journalSearchInput ? journalSearchInput.value.trim() : '';
+        const date = journalDateInput ? journalDateInput.value : '';
+        try {
+            const res = await fetch(`/api/journals?search=${encodeURIComponent(search)}&date=${encodeURIComponent(date)}`);
+            if (res.ok) {
+                const data = await res.json();
+                
+                const titleEl = document.getElementById('journals-modal-title');
+                if (titleEl) {
+                    titleEl.textContent = `Past Journals (${data.length})`;
+                }
+                
+                journalsListContainer.innerHTML = '';
+                if (data.length === 0) {
+                    if (date) {
+                        const emptyDiv = document.createElement('div');
+                        emptyDiv.style.textAlign = 'center';
+                        emptyDiv.style.padding = '40px 20px';
+                        
+                        const msg = document.createElement('div');
+                        msg.style.color = '#aaa';
+                        msg.style.marginBottom = '20px';
+                        msg.textContent = 'No journal found for this date.';
+                        
+                        const addBtn = document.createElement('button');
+                        addBtn.className = 'btn-primary';
+                        addBtn.innerHTML = '<i class="ph ph-pencil"></i> Did you remember anything?';
+                        addBtn.addEventListener('click', () => {
+                            currentJournalDate = date;
+                            const journalHabit = habits.find(h => h.name.toLowerCase() === 'journal');
+                            currentJournalHabitId = journalHabit ? journalHabit.id : null;
+                            
+                            if(journalContent) journalContent.value = '';
+                            if(journalsListModal) journalsListModal.classList.remove('active');
+                            if(journalModal) {
+                                journalModal.classList.add('active');
+                                setTimeout(() => { if(journalContent) journalContent.focus(); }, 100);
+                            }
+                        });
+                        
+                        emptyDiv.appendChild(msg);
+                        emptyDiv.appendChild(addBtn);
+                        journalsListContainer.appendChild(emptyDiv);
+                    } else {
+                        journalsListContainer.innerHTML = '<div style="color: #aaa; text-align: center; padding: 20px;">No journals found.</div>';
+                    }
+                    return;
+                }
+                data.forEach(j => {
+                    const card = document.createElement('div');
+                    card.className = 'glass-panel';
+                    card.style.padding = '15px';
+                    card.style.borderRadius = '8px';
+                    
+                    const header = document.createElement('div');
+                    header.style.display = 'flex';
+                    header.style.justifyContent = 'space-between';
+                    header.style.marginBottom = '10px';
+                    
+                    const dateSpan = document.createElement('span');
+                    dateSpan.style.fontWeight = 'bold';
+                    dateSpan.style.color = 'var(--accent-primary)';
+                    dateSpan.textContent = j.date;
+                    
+                    const editBtn = document.createElement('button');
+                    editBtn.className = 'btn-icon';
+                    editBtn.innerHTML = '<i class="ph ph-pencil"></i>';
+                    editBtn.title = "Edit Journal";
+                    editBtn.style.color = '#aaa';
+                    
+                    editBtn.addEventListener('click', () => {
+                        currentJournalDate = j.date;
+                        const journalHabit = habits.find(h => h.name.toLowerCase() === 'journal');
+                        currentJournalHabitId = journalHabit ? journalHabit.id : null;
+                        
+                        if(journalContent) journalContent.value = j.content;
+                        if(journalsListModal) journalsListModal.classList.remove('active');
+                        if(journalModal) {
+                            journalModal.classList.add('active');
+                            setTimeout(() => { if(journalContent) journalContent.focus(); }, 100);
+                        }
+                    });
+                    
+                    header.appendChild(dateSpan);
+                    header.appendChild(editBtn);
+                    
+                    const body = document.createElement('div');
+                    body.style.whiteSpace = 'pre-wrap';
+                    body.style.color = '#ddd';
+                    body.textContent = j.content;
+                    
+                    card.appendChild(header);
+                    card.appendChild(body);
+                    journalsListContainer.appendChild(card);
+                });
+            }
+        } catch(e) { console.error("Error fetching journals list", e); }
+    };
+    
+    if (viewJournalsBtn) {
+        viewJournalsBtn.addEventListener('click', () => {
+            if(journalsListModal) {
+                journalsListModal.classList.add('active');
+                fetchJournalsList();
+            }
+        });
+    }
+    
+    if (closeJournalsListModalBtn) {
+        closeJournalsListModalBtn.addEventListener('click', () => {
+            if(journalsListModal) journalsListModal.classList.remove('active');
+        });
+    }
+    
+    if (journalSearchInput) {
+        journalSearchInput.addEventListener('input', () => {
+            clearTimeout(fetchJournalsTimeout);
+            fetchJournalsTimeout = setTimeout(fetchJournalsList, 300);
+        });
+    }
+    
+    if (journalDateInput) {
+        journalDateInput.addEventListener('change', fetchJournalsList);
+    }
+    
+    if (clearJournalFiltersBtn) {
+        clearJournalFiltersBtn.addEventListener('click', () => {
+            if(journalSearchInput) journalSearchInput.value = '';
+            if(journalDateInput) journalDateInput.value = '';
+            fetchJournalsList();
+        });
+    }
+    
+    if (journalsListModal) {
+        journalsListModal.addEventListener('click', (e) => {
+            if(e.target === journalsListModal) {
+                journalsListModal.classList.remove('active');
+            }
+        });
+    }
+    
+    // Sticky Notes Logic
+    let notesData = [];
+    
+    async function fetchNotesList() {
+        if (!notesListContainer) return;
+        try {
+            const res = await fetch('/api/notes');
+            if (res.ok) {
+                notesData = await res.json();
+                renderNotes();
+            }
+        } catch(e) { console.error("Error fetching notes", e); }
+    }
+    
+    function renderNotes() {
+        notesListContainer.innerHTML = '';
+        if (notesData.length === 0) {
+            notesListContainer.innerHTML = '<div style="grid-column: 1 / -1; color: #aaa; text-align: center; padding: 40px;">No active notes. Click "New Note" to create one!</div>';
+            return;
+        }
+        
+        notesData.forEach(note => {
+            const card = document.createElement('div');
+            card.className = 'glass-panel';
+            card.style.padding = '15px';
+            card.style.borderRadius = '8px';
+            card.style.display = 'flex';
+            card.style.flexDirection = 'column';
+            card.style.gap = '10px';
+            card.style.background = 'rgba(0, 255, 128, 0.05)';
+            card.style.border = '1px solid rgba(0, 255, 128, 0.2)';
+            
+            const textarea = document.createElement('textarea');
+            textarea.value = note.content;
+            textarea.placeholder = "Write your note here...";
+            textarea.style.width = '100%';
+            textarea.style.minHeight = '120px';
+            textarea.style.background = 'transparent';
+            textarea.style.border = 'none';
+            textarea.style.color = 'white';
+            textarea.style.resize = 'vertical';
+            textarea.style.outline = 'none';
+            textarea.style.fontFamily = 'inherit';
+            
+            const footer = document.createElement('div');
+            footer.style.display = 'flex';
+            footer.style.flexDirection = 'column';
+            footer.style.gap = '8px';
+            footer.style.borderTop = '1px solid rgba(255,255,255,0.1)';
+            footer.style.paddingTop = '10px';
+            
+            const typeRow = document.createElement('div');
+            typeRow.style.display = 'flex';
+            typeRow.style.justifyContent = 'space-between';
+            typeRow.style.alignItems = 'center';
+            
+            const typeSelect = document.createElement('select');
+            typeSelect.style.background = 'rgba(0,0,0,0.2)';
+            typeSelect.style.border = '1px solid #4a4d5d';
+            typeSelect.style.color = 'white';
+            typeSelect.style.borderRadius = '4px';
+            typeSelect.style.padding = '4px 8px';
+            typeSelect.style.fontSize = '0.8rem';
+            typeSelect.style.outline = 'none';
+            typeSelect.innerHTML = `
+                <option value="forever">Forever</option>
+                <option value="single">Specific Date</option>
+                <option value="duration">Date Range</option>
+            `;
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'btn-icon';
+            deleteBtn.innerHTML = '<i class="ph ph-trash"></i>';
+            deleteBtn.style.color = 'var(--danger)';
+            deleteBtn.title = 'Delete Note';
+            
+            typeRow.appendChild(typeSelect);
+            typeRow.appendChild(deleteBtn);
+            
+            const datesContainer = document.createElement('div');
+            datesContainer.style.display = 'flex';
+            datesContainer.style.gap = '5px';
+            
+            const date1 = document.createElement('input');
+            date1.type = 'date';
+            date1.style.background = 'rgba(0,0,0,0.2)';
+            date1.style.border = '1px solid #4a4d5d';
+            date1.style.color = 'white';
+            date1.style.borderRadius = '4px';
+            date1.style.padding = '3px';
+            date1.style.fontSize = '0.75rem';
+            date1.style.colorScheme = 'dark';
+            date1.style.flex = '1';
+            
+            const date2 = document.createElement('input');
+            date2.type = 'date';
+            date2.style.background = 'rgba(0,0,0,0.2)';
+            date2.style.border = '1px solid #4a4d5d';
+            date2.style.color = 'white';
+            date2.style.borderRadius = '4px';
+            date2.style.padding = '3px';
+            date2.style.fontSize = '0.75rem';
+            date2.style.colorScheme = 'dark';
+            date2.style.flex = '1';
+            
+            datesContainer.appendChild(date1);
+            datesContainer.appendChild(date2);
+            
+            footer.appendChild(typeRow);
+            footer.appendChild(datesContainer);
+            
+            card.appendChild(textarea);
+            card.appendChild(footer);
+            notesListContainer.appendChild(card);
+            
+            let currentMode = 'forever';
+            if (note.start_date && note.expires_at && note.start_date === note.expires_at) {
+                currentMode = 'single';
+            } else if (note.start_date || note.expires_at) {
+                currentMode = 'duration';
+            }
+            typeSelect.value = currentMode;
+            date1.value = note.start_date || '';
+            date2.value = note.expires_at || '';
+            
+            const updateUI = () => {
+                if (typeSelect.value === 'forever') {
+                    datesContainer.style.display = 'none';
+                } else if (typeSelect.value === 'single') {
+                    datesContainer.style.display = 'flex';
+                    date1.style.display = 'block';
+                    date2.style.display = 'none';
+                } else {
+                    datesContainer.style.display = 'flex';
+                    date1.style.display = 'block';
+                    date2.style.display = 'block';
+                }
+            };
+            updateUI();
+            
+            let saveTimeout;
+            const autoSave = async () => {
+                const updatedContent = textarea.value;
+                let start = '';
+                let end = '';
+                if (typeSelect.value === 'single') {
+                    start = date1.value;
+                    end = date1.value; // same date
+                } else if (typeSelect.value === 'duration') {
+                    start = date1.value;
+                    end = date2.value;
+                }
+                
+                try {
+                    await fetch(`/api/notes/${note.id}`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({content: updatedContent, start_date: start, expires_at: end})
+                    });
+                } catch(e) { console.error("Error auto-saving", e); }
+            };
+            
+            textarea.addEventListener('input', () => {
+                clearTimeout(saveTimeout);
+                saveTimeout = setTimeout(autoSave, 1000);
+            });
+            
+            typeSelect.addEventListener('change', () => {
+                if (typeSelect.value === 'single' && !date1.value) date1.value = getTodayString();
+                if (typeSelect.value === 'duration') {
+                    if (!date1.value) date1.value = getTodayString();
+                    if (!date2.value) date2.value = getTodayString();
+                }
+                updateUI();
+                autoSave();
+            });
+            
+            date1.addEventListener('change', autoSave);
+            date2.addEventListener('change', autoSave);
+            
+            deleteBtn.addEventListener('click', async () => {
+                if(confirm("Delete this note?")) {
+                    try {
+                        const res = await fetch(`/api/notes/${note.id}`, { method: 'DELETE' });
+                        if(res.ok) fetchNotesList();
+                    } catch(e) { console.error(e); }
+                }
+            });
+        });
+    };
+    
+    const getTodayNotesContent = () => {
+        const today = getTodayString();
+        const active = notesData.filter(n => {
+            const started = !n.start_date || n.start_date <= today;
+            const notExpired = !n.expires_at || n.expires_at >= today;
+            const hasContent = n.content.trim() !== '';
+            return started && notExpired && hasContent;
+        });
+        if (active.length === 0) return null;
+        return active.map(n => n.content.trim()).filter(c => c).join('\n\n---\n\n');
+    };
+
+    if (viewNotesBtn) {
+        viewNotesBtn.addEventListener('mouseenter', () => {
+            const preview = document.getElementById('notes-hover-preview');
+            const content = document.getElementById('notes-hover-content');
+            if(preview && content) {
+                const text = getTodayNotesContent();
+                if (text) {
+                    content.textContent = text;
+                    preview.style.display = 'block';
+                }
+            }
+        });
+        
+        viewNotesBtn.addEventListener('mouseleave', () => {
+            const preview = document.getElementById('notes-hover-preview');
+            if(preview) preview.style.display = 'none';
+        });
+        
+        viewNotesBtn.addEventListener('click', () => {
+            if(notesModal) {
+                notesModal.classList.add('active');
+                fetchNotesList();
+            }
+        });
+    }
+    
+    if (closeNotesModalBtn) {
+        closeNotesModalBtn.addEventListener('click', () => {
+            if(notesModal) notesModal.classList.remove('active');
+        });
+    }
+    
+    if (notesModal) {
+        notesModal.addEventListener('click', (e) => {
+            if(e.target === notesModal) notesModal.classList.remove('active');
+        });
+    }
+    
+    if (addNoteBtn) {
+        addNoteBtn.addEventListener('click', async () => {
+            try {
+                const res = await fetch('/api/notes', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({content: '', start_date: '', expires_at: ''})
+                });
+                if (res.ok) fetchNotesList();
+            } catch(e) { console.error(e); }
+        });
+    }
     
     // Settings Logic
     let currentSettings = { bg_animation: 0, bg_music: false };
@@ -478,9 +943,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 td.appendChild(checkDiv);
                 
                 // Toggle log
-                td.addEventListener('click', () => {
-                    const currentlyCompleted = checkDiv.classList.contains('checked');
-                    toggleLog(habit.id, dateStr, !currentlyCompleted, checkDiv);
+                td.addEventListener('click', async () => {
+                    if (habit.name.toLowerCase() === 'journal') {
+                        currentJournalHabitId = habit.id;
+                        currentJournalDate = dateStr;
+                        
+                        if (journalContent) journalContent.value = '';
+                        try {
+                            const res = await fetch(`/api/journal?date=${currentJournalDate}`);
+                            if (res.ok) {
+                                const data = await res.json();
+                                if (journalContent) journalContent.value = data.content || '';
+                            }
+                        } catch(e) { console.error("Error fetching journal", e); }
+                        
+                        if (journalModal) {
+                            journalModal.classList.add('active');
+                            setTimeout(() => { if(journalContent) journalContent.focus(); }, 100);
+                        }
+                    } else {
+                        const currentlyCompleted = checkDiv.classList.contains('checked');
+                        toggleLog(habit.id, dateStr, !currentlyCompleted, checkDiv);
+                    }
                 });
                 
                 tr.appendChild(td);
